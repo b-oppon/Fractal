@@ -1,89 +1,133 @@
 ---
-AWSTemplateFormatVersion: 2018-10-25
-
 Resources:
 
-#VPC
-    VPC:
-      Type: AWS::EC2::VPC
-      Properties:
-        CidrBlock: 10.0.0.0/16
-        EnableDnsSupport: true
-        EnableDnsHostnames: true
-        InstanceTenancy: default
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      InstanceTenancy: default
 
-#Internet Gateway
-    InternetGateway:
-        Type: AWS::EC2::InternetGateway
-    InternetGatewayAttachment:
-        Type: AWS::EC2::VPCGatewayAttachment
-        Properties:
-            InternetGatewayId: !Ref InternetGateway
-            VpcId: !Ref VPC
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
 
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    DependsOn: InternetGateway
+    Properties:
+     InternetGatewayId: !Ref InternetGateway
+     VpcId: !Ref VPC
 
-#Public Subnet
-    PublicSubnet:
-      Type: AWS::EC2::Subnet
-      Properties:
-        AvailabilityZone: us-east-1a
-        VpcId: !Ref VPC
-        CidrBlock: 10.0.0.0/24
-        MapPublicIpOnLaunch: true
-#Public RouteTable
-    PublicRouteTable:
-      Type: AWS::EC2::RouteTable
-      Properties:
-        VpcId: !Ref VPC
-    PublicRoute:
-      Type: AWS::EC2::Route
-      DependsOn: VPCGatewayAttachment
-      Properties:
-        DestinationCidrBlock: 0.0.0.0/0
-        GatewayId: !Ref InternetGateway
-        RouteTableId: !Ref PublicRouteTable
-#Public Subnet Route Table Association
-    PublicSubnetRouteTableAssociation:
-      Type: AWS::EC2::SubnetRouteTableAssociation
-      Properties:
-        RouteTableId: !Ref PublicRouteTable
-        SubnetId: !Ref PublicSubnet
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: eu-west-1a
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.0.0/24
+      MapPublicIpOnLaunch: true
 
-#Nat Gateway EIP
-    NatGatewayEIP:
-      Type: AWS::EC2::EIP
-      DependsOn: InternetGatewayAttachment
-      Properties:
-        Domain: vpc
-#Nat Gateway
-    NatGateway:
-      Type: AWS::EC2::NatGateway
-      Properties:
-        AllocationId: !GetAtt NatGatewayEIP.AllocationId
-        SubnetId: !Ref PublicSubnet
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+      RouteTableId: !Ref PublicRouteTable
 
-#Private subnet
-    PrivateSubnet:
-      Type: AWS::EC2::Subnet
-      Properties:
-        AvailabilityZone: eu-west-1b
-        VpcId: !Ref VPC
-        CidrBlock: 10.0.1.0/24
-        MapPublicIpOnLaunch: false
-#Private Route Table
-    PrivateRouteTable:
-      Type: AWS::EC2::RouteTable
-      Properties:
-        VpcId: !Ref VPC
-      PrivateRoute:
-      Type: AWS::EC2::Route
-      Properties:
-        RouteTableId: !Ref PrivateRouteTable1
-        DestinationCidrBlock: 0.0.0.0/0
-        NatGatewayId: !Ref NatGateway
-#Private Subnet Route Table Association
-    PrivateSubnetRouteTableAssociation:
-      Type: AWS::EC2::SubnetRouteTableAssociation
-      Properties:
-        RouteTableId: !Ref PrivateRouteTable
-        SubnetId: !Ref PrivateSubnet
+  PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet
+
+  NatGatewayEIP:
+    Type: AWS::EC2::EIP
+    DependsOn: InternetGatewayAttachment
+
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGatewayEIP.AllocationId
+      SubnetId: !Ref PublicSubnet
+
+  PrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: eu-west-1b
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.1.0/24
+      MapPublicIpOnLaunch: false
+
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+  PrivateRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway
+
+  PrivateSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      SubnetId: !Ref PrivateSubnet
+
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: "Fractal"
+      GroupDescription: "HTTPS traffic in and out only."
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: '443'
+        ToPort: '443'
+        CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+      - IpProtocol: tcp
+        FromPort: '443'
+        ToPort: '443'
+        CidrIp: 0.0.0.0/0
+
+  ElasticLoadBalancer:
+    Type: AWS::ElasticLoadBalancing::LoadBalancer
+    Properties:
+      Subnets:
+      -  !Ref PublicSubnet
+      SecurityGroups:
+      -  !Ref SecurityGroup
+      Instances:
+      -  !Ref EC2Instance1
+      Scheme: internet-facing
+      CrossZone: 'false'
+      Listeners:
+      - LoadBalancerPort: '80'
+        InstancePort: '80'
+        Protocol: HTTP
+      HealthCheck:
+        Target: HTTP:80/
+        HealthyThreshold: '3'
+        UnhealthyThreshold: '5'
+        Interval: '30'
+        Timeout: '5'
+      ConnectionDrainingPolicy:
+        Enabled: 'true'
+        Timeout: '300'
+
+  EC2Instance1:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-00035f41c82244dab # Ubuntu Server 18.04 LTS (HVM), SSD Volume Type in Ireland region
+      InstanceType: t2.micro
+      SecurityGroupIds:
+      -  !Ref SecurityGroup
+      SubnetId: !Ref PublicSubnet
+    DependsOn: PublicSubnet
