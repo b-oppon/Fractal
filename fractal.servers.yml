@@ -1,4 +1,45 @@
 ---
+Mappings:
+  RegionMap:
+    us-east-1:
+      "Ubuntu18" : "ami-0977029b5b13f3d08" #hvm:ebs-ssd
+    us-west-1:
+      "Ubuntu18" : "ami-03d5270fcb641f79b" #hvm:ebs-ssd
+    ap-northeast-3:
+      "Ubuntu18" : "ami-08ee018a81c08de53" #hvm:ebs-ssd
+    ap-northeast-2:
+      "Ubuntu18" : "ami-0b04c9bf8abfa5b8" #hvm:ebs-ssd
+    ap-northeast-1:
+      "Ubuntu18" : "ami-033cdfcdd17e140cc" #hvm:ebs-ssd
+    sa-east-1:
+      "Ubuntu18" : "ami-0389698ad66808197" #hvm:ebs-ssd
+    ap-southeast-1:
+      "Ubuntu18" : "ami-012e97ef137a3f446" #hvm:ebs-ssd
+    ca-central-1:
+      "Ubuntu18" : "ami-01428c87658222f33" #hvm:ebs-ssd
+    ap-southeast-2:
+      "Ubuntu18" : "ami-0b1f854598cf629f6" #hvm:ebs-ssd
+    us-west-2:
+      "Ubuntu18" : "ami-0f47ef92b4218ec09" #hvm:ebs-ssd
+    us-east-2:
+      "Ubuntu18" : "ami-05f39e7b7f153bc6a" #hvm:ebs-ssd
+    ap-south-1:
+      "Ubuntu18" : "ami-0807bb2b5888ad68c" #hvm:ebs-ssd
+    eu-central-1:
+      "Ubuntu18" : "ami-0dfd7cad24d571c54" #hvm:ebs-ssd
+    eu-west-1:
+      "Ubuntu18" : "ami-0aebeb281fdee5054" #hvm:ebs-ssd
+    eu-west-2:
+      "Ubuntu18" : "ami-03f2ee00e9dc6b85f" #hvm:ebs-ssd
+    eu-west-3:
+      "Ubuntu18" : "ami-0a2ca21adb4a04084" #hvm:ebs-ssd
+    cn-north-1:
+      "Ubuntu18" : "ami-05596fb52c3802012" #hvm:ebs-ssd
+    cn-northwest-1:
+      "Ubuntu18" : "ami-03f7db8b059795736" #hvm:ebs-ssd
+    us-gov-west-1:
+      "Ubuntu18" : "ami-33dc4252" #hvm:ebs-ssd
+
 Resources:
 
   VPC:
@@ -11,7 +52,6 @@ Resources:
 
   InternetGateway:
     Type: AWS::EC2::InternetGateway
-
   InternetGatewayAttachment:
     Type: AWS::EC2::VPCGatewayAttachment
     DependsOn: InternetGateway
@@ -22,7 +62,10 @@ Resources:
   PublicSubnet:
     Type: AWS::EC2::Subnet
     Properties:
-      AvailabilityZone: eu-west-1a
+      AvailabilityZone:
+        Fn::Select:
+          - 0
+          - Fn::GetAZs: ""
       VpcId: !Ref VPC
       CidrBlock: 10.0.0.0/24
       MapPublicIpOnLaunch: true
@@ -58,7 +101,10 @@ Resources:
   PrivateSubnet:
     Type: AWS::EC2::Subnet
     Properties:
-      AvailabilityZone: eu-west-1b
+      AvailabilityZone:
+        Fn::Select:
+          - 1
+          - Fn::GetAZs: ""
       VpcId: !Ref VPC
       CidrBlock: 10.0.1.0/24
       MapPublicIpOnLaunch: false
@@ -125,7 +171,7 @@ Resources:
   EC2Instance1:
     Type: AWS::EC2::Instance
     Properties:
-      ImageId: ami-00035f41c82244dab # Ubuntu Server 18.04 LTS (HVM), SSD Volume Type in Ireland region
+      ImageId: !FindInMap [RegionMap, !Ref "AWS::Region", Ubuntu18]
       InstanceType: t2.micro
       SecurityGroupIds:
       -  !Ref SecurityGroup
